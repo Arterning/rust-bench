@@ -41,10 +41,22 @@ echo 命令: rb -n 100 -c 10 -H "User-Agent: RB-Test/1.0" -H "Accept: applicatio
 REM rb -n 100 -c 10 -H "User-Agent: RB-Test/1.0" -H "Accept: application/json" https://httpbin.org/headers
 echo.
 
-REM 示例 7: 综合测试
-echo 示例 7: 综合测试（高并发 + KeepAlive + 自定义 Headers）
-echo 命令: rb -n 1000 -c 50 -k -H "User-Agent: RB-Test/1.0" https://httpbin.org/get
-REM rb -n 1000 -c 50 -k -H "User-Agent: RB-Test/1.0" https://httpbin.org/get
+REM 示例 7: 导出结果为 JSON 格式
+echo 示例 7: 导出结果为 JSON 格式
+echo 命令: rb -n 100 -c 10 -o result.json https://httpbin.org/get
+REM rb -n 100 -c 10 -o result.json https://httpbin.org/get
+echo.
+
+REM 示例 8: 导出结果为 CSV 格式
+echo 示例 8: 导出结果为 CSV 格式
+echo 命令: rb -n 100 -c 10 -o result.csv -f csv https://httpbin.org/get
+REM rb -n 100 -c 10 -o result.csv -f csv https://httpbin.org/get
+echo.
+
+REM 示例 9: 综合测试（高并发 + KeepAlive + 自定义 Headers + 导出）
+echo 示例 9: 综合测试（高并发 + KeepAlive + 自定义 Headers + 导出）
+echo 命令: rb -n 1000 -c 50 -k -H "User-Agent: RB-Test/1.0" -o report.json https://httpbin.org/get
+REM rb -n 1000 -c 50 -k -H "User-Agent: RB-Test/1.0" -o report.json https://httpbin.org/get
 echo.
 
 echo 注意: 以上命令已被注释（REM），删除 REM 后即可运行

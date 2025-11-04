@@ -1,0 +1,16 @@
+{
+  "total_requests": 1000,
+  "successful_requests": 998,
+  "failed_requests": 2,
+  "success_rate": 99.8,
+  "total_duration_secs": 5.432,
+  "avg_response_time_ms": 245.123,
+  "min_response_time_ms": 123.456,
+  "max_response_time_ms": 892.345,
+  "p50_ms": 234.567,
+  "p75_ms": 298.765,
+  "p90_ms": 456.789,
+  "p95_ms": 567.890,
+  "p99_ms": 789.012,
+  "qps": 183.75
+}

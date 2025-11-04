@@ -10,6 +10,7 @@
 - 支持 HTTP KeepAlive 连接复用
 - 支持基于请求数或时间的测试模式
 - 提供详细的统计信息（响应时间分布、百分位数、QPS 等）
+- 支持结果导出（JSON/CSV 格式）
 - 彩色输出，易于阅读
 
 ## 安装
@@ -61,6 +62,8 @@ rb [OPTIONS] <URL>
 | `-T` | `--content-type` | Content-Type 头 | 无 |
 | `-H` | `--header` | 添加自定义 Header (可多次使用) | 无 |
 | `-k` | `--keepalive` | 启用 HTTP KeepAlive | false |
+| `-o` | `--output` | 导出结果到文件 | 无 |
+| `-f` | `--format` | 导出格式 (json 或 csv) | json |
 | `-h` | `--help` | 显示帮助信息 | - |
 | `-V` | `--version` | 显示版本信息 | - |
 
@@ -119,13 +122,27 @@ rb -H "Authorization: Bearer token123" \
 rb -n 1000 -c 50 -k https://example.com
 ```
 
-### 6. 综合示例
+### 6. 结果导出
 
 ```bash
-# 完整的压力测试：1000 请求，50 并发，启用 KeepAlive，自定义 Headers
+# 导出结果为 JSON 格式
+rb -n 1000 -c 50 -o result.json https://example.com
+
+# 导出结果为 CSV 格式
+rb -n 1000 -c 50 -o result.csv -f csv https://example.com
+
+# 指定导出格式（显式指定 JSON）
+rb -n 500 -c 25 -o benchmark_report.json -f json https://api.example.com/test
+```
+
+### 7. 综合示例
+
+```bash
+# 完整的压力测试：1000 请求，50 并发，启用 KeepAlive，自定义 Headers，导出结果
 rb -n 1000 -c 50 -k \
    -H "Authorization: Bearer your_token" \
    -H "Accept: application/json" \
+   -o report.json \
    https://api.example.com/endpoint
 ```
 
@@ -166,6 +183,41 @@ Rust Bench - HTTP 压力测试工具
   QPS (每秒请求数): 183.75
 ```
 
+## 导出文件格式
+
+### JSON 格式
+
+使用 `-o result.json` 或 `-o result.json -f json` 导出时，会生成包含以下字段的 JSON 文件：
+
+```json
+{
+  "total_requests": 1000,
+  "successful_requests": 998,
+  "failed_requests": 2,
+  "success_rate": 99.8,
+  "total_duration_secs": 5.432,
+  "avg_response_time_ms": 245.123,
+  "min_response_time_ms": 123.456,
+  "max_response_time_ms": 892.345,
+  "p50_ms": 234.567,
+  "p75_ms": 298.765,
+  "p90_ms": 456.789,
+  "p95_ms": 567.890,
+  "p99_ms": 789.012,
+  "qps": 183.75
+}
+```
+
+### CSV 格式
+
+使用 `-o result.csv -f csv` 导出时，会生成包含所有统计指标的 CSV 文件，字段与 JSON 格式相同，适合在 Excel 或其他数据分析工具中使用。
+
+CSV 文件示例：
+```csv
+total_requests,successful_requests,failed_requests,success_rate,total_duration_secs,avg_response_time_ms,min_response_time_ms,max_response_time_ms,p50_ms,p75_ms,p90_ms,p95_ms,p99_ms,qps
+1000,998,2,99.8,5.432,245.123,123.456,892.345,234.567,298.765,456.789,567.890,789.012,183.75
+```
+
 ## 性能提示
 
 1. **使用 Release 编译**:
@@ -191,6 +243,9 @@ Rust Bench - HTTP 压力测试工具
 - **tokio**: 异步运行时
 - **anyhow**: 错误处理
 - **colored**: 彩色输出
+- **serde**: 序列化/反序列化
+- **serde_json**: JSON 序列化
+- **csv**: CSV 文件处理
 
 ## 与 Apache Bench (ab) 的对比
 
@@ -202,6 +257,7 @@ Rust Bench - HTTP 压力测试工具
 | 统计详细度 | 详细（百分位数等） | 详细 |
 | KeepAlive | 支持 | 支持 |
 | 自定义 Headers | 支持多个 | 支持多个 |
+| 结果导出 | 支持 JSON/CSV | 不支持 |
 
 ## 注意事项
 
@@ -223,7 +279,7 @@ MIT License
 - [ ] 支持 HTTPS 证书验证配置
 - [ ] 支持请求超时设置
 - [ ] 支持实时进度显示
-- [ ] 支持结果导出（JSON/CSV）
+- [x] 支持结果导出（JSON/CSV）✅
 - [ ] 支持更多 HTTP 方法（PUT、DELETE 等）
 - [ ] 支持从文件批量读取 URL
 - [ ] 支持响应内容验证

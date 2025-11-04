@@ -1,6 +1,9 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use colored::*;
+use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -41,6 +44,14 @@ struct Args {
     /// 启用 HTTP KeepAlive
     #[arg(short = 'k', long)]
     keepalive: bool,
+
+    /// 导出结果到文件
+    #[arg(short = 'o', long)]
+    output: Option<PathBuf>,
+
+    /// 导出格式: json 或 csv
+    #[arg(short = 'f', long, default_value = "json")]
+    format: String,
 }
 
 #[derive(Debug, Clone)]
@@ -58,6 +69,24 @@ struct Stats {
     failed_requests: usize,
     total_duration: Duration,
     response_times: Vec<Duration>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct BenchmarkReport {
+    total_requests: usize,
+    successful_requests: usize,
+    failed_requests: usize,
+    success_rate: f64,
+    total_duration_secs: f64,
+    avg_response_time_ms: f64,
+    min_response_time_ms: f64,
+    max_response_time_ms: f64,
+    p50_ms: f64,
+    p75_ms: f64,
+    p90_ms: f64,
+    p95_ms: f64,
+    p99_ms: f64,
+    qps: f64,
 }
 
 impl Stats {
@@ -133,6 +162,82 @@ impl Stats {
             println!("  QPS (每秒请求数): {:.2}", qps);
         }
     }
+
+    fn to_report(&self) -> BenchmarkReport {
+        let avg = if !self.response_times.is_empty() {
+            self.response_times.iter().sum::<Duration>().as_secs_f64() * 1000.0
+                / self.response_times.len() as f64
+        } else {
+            0.0
+        };
+
+        let min = self
+            .response_times
+            .iter()
+            .min()
+            .map(|d| d.as_secs_f64() * 1000.0)
+            .unwrap_or(0.0);
+
+        let max = self
+            .response_times
+            .iter()
+            .max()
+            .map(|d| d.as_secs_f64() * 1000.0)
+            .unwrap_or(0.0);
+
+        BenchmarkReport {
+            total_requests: self.total_requests,
+            successful_requests: self.successful_requests,
+            failed_requests: self.failed_requests,
+            success_rate: (self.successful_requests as f64 / self.total_requests as f64) * 100.0,
+            total_duration_secs: self.total_duration.as_secs_f64(),
+            avg_response_time_ms: avg,
+            min_response_time_ms: min,
+            max_response_time_ms: max,
+            p50_ms: self.calculate_percentile(50.0).as_secs_f64() * 1000.0,
+            p75_ms: self.calculate_percentile(75.0).as_secs_f64() * 1000.0,
+            p90_ms: self.calculate_percentile(90.0).as_secs_f64() * 1000.0,
+            p95_ms: self.calculate_percentile(95.0).as_secs_f64() * 1000.0,
+            p99_ms: self.calculate_percentile(99.0).as_secs_f64() * 1000.0,
+            qps: self.successful_requests as f64 / self.total_duration.as_secs_f64(),
+        }
+    }
+
+    fn export_json(&self, path: &PathBuf) -> Result<()> {
+        let report = self.to_report();
+        let json = serde_json::to_string_pretty(&report)
+            .context("序列化 JSON 失败")?;
+
+        let mut file = File::create(path)
+            .context(format!("创建文件失败: {}", path.display()))?;
+
+        file.write_all(json.as_bytes())
+            .context("写入 JSON 文件失败")?;
+
+        Ok(())
+    }
+
+    fn export_csv(&self, path: &PathBuf) -> Result<()> {
+        let report = self.to_report();
+        let mut wtr = csv::Writer::from_path(path)
+            .context(format!("创建 CSV 文件失败: {}", path.display()))?;
+
+        wtr.serialize(&report)
+            .context("序列化 CSV 失败")?;
+
+        wtr.flush()
+            .context("写入 CSV 文件失败")?;
+
+        Ok(())
+    }
+
+    fn export(&self, path: &PathBuf, format: &str) -> Result<()> {
+        match format.to_lowercase().as_str() {
+            "json" => self.export_json(path),
+            "csv" => self.export_csv(path),
+            _ => anyhow::bail!("不支持的导出格式: {}，请使用 'json' 或 'csv'", format),
+        }
+    }
 }
 
 #[tokio::main]
@@ -153,6 +258,14 @@ async fn main() -> Result<()> {
 
     // 打印报告
     stats.print_report();
+
+    // 导出结果
+    if let Some(ref output_path) = args.output {
+        println!();
+        println!("正在导出结果到 {} ...", output_path.display());
+        stats.export(output_path, &args.format)?;
+        println!("{}", format!("✓ 结果已成功导出到: {}", output_path.display()).bright_green());
+    }
 
     Ok(())
 }

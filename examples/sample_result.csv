@@ -1,0 +1,2 @@
+total_requests,successful_requests,failed_requests,success_rate,total_duration_secs,avg_response_time_ms,min_response_time_ms,max_response_time_ms,p50_ms,p75_ms,p90_ms,p95_ms,p99_ms,qps
+1000,998,2,99.8,5.432,245.123,123.456,892.345,234.567,298.765,456.789,567.890,789.012,183.75
