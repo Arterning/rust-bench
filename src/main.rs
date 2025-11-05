@@ -33,6 +33,10 @@ struct Args {
     #[arg(short = 'p', long)]
     postfile: Option<PathBuf>,
 
+    /// 代理服务器 URL (支持 http://, socks4://, socks5://)
+    #[arg(short = 'x', long)]
+    proxy: Option<String>,
+
     /// Content-Type 头
     #[arg(short = 'T', long)]
     content_type: Option<String>,
@@ -285,6 +289,18 @@ fn validate_args(args: &Args) -> Result<()> {
         }
     }
 
+    // 验证代理 URL 格式
+    if let Some(ref proxy_url) = args.proxy {
+        if !proxy_url.starts_with("http://")
+            && !proxy_url.starts_with("https://")
+            && !proxy_url.starts_with("socks4://")
+            && !proxy_url.starts_with("socks5://") {
+            anyhow::bail!(
+                "代理 URL 格式不正确。支持的格式: http://, https://, socks4://, socks5://\n示例: socks5://127.0.0.1:1080"
+            );
+        }
+    }
+
     Ok(())
 }
 
@@ -300,6 +316,10 @@ fn print_config(args: &Args) {
 
     println!("  并发数:       {}", args.concurrency);
     println!("  KeepAlive:    {}", if args.keepalive { "启用" } else { "禁用" });
+
+    if let Some(ref proxy) = args.proxy {
+        println!("  代理服务器:   {}", proxy);
+    }
 
     if let Some(ref content_type) = args.content_type {
         println!("  Content-Type: {}", content_type);
@@ -355,6 +375,13 @@ fn build_client(args: &Args) -> Result<reqwest::Client> {
     let mut client_builder = reqwest::Client::builder()
         .pool_max_idle_per_host(if args.keepalive { args.concurrency } else { 0 })
         .pool_idle_timeout(if args.keepalive { Some(Duration::from_secs(90)) } else { None });
+
+    // 配置代理
+    if let Some(ref proxy_url) = args.proxy {
+        let proxy = reqwest::Proxy::all(proxy_url)
+            .context(format!("无法解析代理 URL: {}", proxy_url))?;
+        client_builder = client_builder.proxy(proxy);
+    }
 
     // 解析自定义 headers
     let mut headers = reqwest::header::HeaderMap::new();
